@@ -13,3 +13,12 @@ print("------------greedy-----------")
 pattern = re.compile(r'asd.*\.asd')
 for c in re.findall(pattern, content):
     print(c)
+print("----------???-------------")
+content = "<BEGIN>useless<BEGIN>useful_one<END>useless<BEGIN>useful_two<END>"
+pattern = re.compile(r'<BEGIN>.*?<END>')
+for c in re.findall(pattern, content):
+    print(c)
+print("----------???-------------")
+pattern = re.compile(r'<BEGIN>(?!.*?<BEGIN>).*?<END>')
+for c in re.findall(pattern, content):
+    print(c)
