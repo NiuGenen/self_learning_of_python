@@ -16,7 +16,7 @@ print("CWD     = " + cwd)
 #define log_file
 default_log_file = default_source_dir + "\log.txt"
 log_file = open(default_log_file,"wb")
-log_count = 1000000
+log_count = 100000
 def log_line(info):
     global log_count
     log_count -= 1
@@ -80,22 +80,63 @@ f = files.__getitem__(0)
 print(f)
 print( "TEST FILE : " + f )
 trace = open( default_traces_dir + r"\\" + f, "r")
-count = 1
+#count = 1
+processing = False
 base_timestramp_in_s  = get_base_time_stramp_in_s_from_file_name( f )
 print("TimeStramp in Seconds = " + str(base_timestramp_in_s) )
 base_timestramp_in_ns = base_timestramp_in_s * 1000 * 1000
 print("TimeStramp in Seconds = " + str(base_timestramp_in_ns) )
+total_read = 0
+total_write = 0
+count_s_2_read = dict()
+count_s_2_write = dict()
 for line in trace:
     line = line.strip().lower()
-    if line == "beginheader":
-        count = -1000
+    #if line == "beginheader":
+    #    count = -1000
+    #if count < 10 and count > 0:
+    if processing:
+        #print(line)
+        #print("-----------------------------------------------------------")
+        words = line.split(",")
+        #for word in words:
+        #    print(word.strip())
+        op_type = words.__getitem__(0)#diskread/diskwrite
+        try:
+            op_timestramp_rel_ns = words.__getitem__(1)#ns
+        except IndexError as e:
+            print("IndexError on line : " + line)
+            continue
+        op_size = words.__getitem__(6)#byte
+        #print(op_type + " " + op_timestramp_rel_ns + " " + op_size)
+        op_timestramp_ab_ns = int(op_timestramp_rel_ns) + base_timestramp_in_ns
+        op_timestramp_ab_s = int(op_timestramp_ab_ns/1000/1000)
+        if op_type == "diskread":
+            total_read += 1
+            if op_timestramp_ab_s in count_s_2_read:
+                count_s_2_read[op_timestramp_ab_s] += 1
+            else:
+                count_s_2_read.setdefault(op_timestramp_ab_s,1)
+        else:
+            if op_type == "diskwrite":
+                total_write += 1
+            if op_timestramp_ab_s in count_s_2_write:
+                count_s_2_write[op_timestramp_ab_s] += 1
+            else:
+                count_s_2_write.setdefault(op_timestramp_ab_s,1)
+        #print(op_type + " " + str(op_timestramp) + " " + op_size)
+        #op_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(op_timestramp/1000000))
+        #print(op_type + " " + str(op_time) + " " + op_size)
+    #if count >= 10:
+    #    break
+    #count += 1
     if line == "endheader":
-        count = 0
-    if count < 100 and count > 0:
-        print(line)
-    if count >= 100:
-        break
-    count += 1
+        #count = 0
+        processing = True
+
+print("TotalRead  = " + str(total_read) )
+print("TotalWrite = " + str(total_write) )
+#print(count_s_2_read)
 
 #end of script
 log_close()
