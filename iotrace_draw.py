@@ -158,10 +158,11 @@ plt.show()
 # 3D disknum to time in second to io
 # 17 disk for all from 0 to 16
 fig = plt.figure()
-ax = fig.add_subplot(111, projection='3d')
+#ax = fig.add_subplot(111, projection='3d')
+ax = Axes3D(fig)
 ax.set_xlabel("time per second")
-ax.set_ylabel('number of requests')
-ax.set_zlabel('disk number')
+ax.set_ylabel('disk number')
+ax.set_zlabel('number of requests')
 for disknum ,cs in zip(
         [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,16],
         ['r', 'g', 'b', 'y','r', 'g', 'b', 'y','r', 'g', 'b', 'y','r', 'g', 'b', 'y']):
@@ -170,13 +171,18 @@ for disknum ,cs in zip(
     f = open(result_s_2_io_under_disknum, "r")
     xs = []
     ys = []
+    zs = []
+    dz = []
     for line in f:
         words = line.strip().split(",")
         time_s = int( words.__getitem__(0) ) - 1204736457 + 1
         io = int( words.__getitem__(1) )
         xs.append( time_s )
-        ys.append( io )
+        ys.append(disknum)
+        zs.append( 0 )
+        dz.append( io )
     f.close()
     print("Drawing it ......")
-    ax.bar(xs, ys, zs=disknum, zdir='y', color=cs, alpha=0.8)
+    ax.bar3d(x=xs, y=ys, z=zs, dx=.5, dy=.5, dz=dz, alpha=.5, color=cs)
+    #ax.bar3d(xs, ys, z=disknum, dx=0.5, dy=0.5,dz=disknum, color=cs, alpha=0.8)
 plt.show()
