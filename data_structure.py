@@ -40,3 +40,19 @@ value = objs[1]
 value[2] += 100000000000
 
 print(objs)
+
+# different type of values in list
+print("-----------------different type of values in list----------------")
+values = []
+values.append(1)
+values.append("read")
+print(values)
+
+values.__setitem__(0,2)
+values.__setitem__(1,"asdasdas")
+print(values)
+
+# dict __getitrm__
+print("----------------- dict __getitrm__ ----------------")
+dicts = {"asd":1,"qwe":2}
+print( dicts.__getitem__(0) )

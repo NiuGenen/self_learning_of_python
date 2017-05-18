@@ -4,14 +4,17 @@ import time
 
 #io traces from http://iotta.snia.org/
 
-default_source_dir = "E:\DevelopmentToolsRelease"
+trace_name = "DevelopmentToolsRelease"
+trace_absolute_dir = "E:\\"
+
+default_source_dir = trace_absolute_dir + trace_name
 default_traces_dir = default_source_dir + "\Traces"
 
 #get trace file name
 files = os.listdir( default_traces_dir )
 print("LIST FILE : " + default_traces_dir)
 for f in files:
-    print(f)
+    print( f )
 
 #create result directory
 default_result_dir = default_source_dir + r"\result"
@@ -21,19 +24,22 @@ if not os.path.exists( default_result_dir ):
 else:
     print( "DIR EXIST : " + default_result_dir )
 
-#file name format : tracename.dd-mm-yyyy.hh-mm-(PM|AM).trace
+# Trace File Name Format : tracename.mm-dd-yyyy.hh-mm-(PM|AM).trace.csv
 def get_base_time_stramp_in_s_from_file_name(name):
     parts = name.split('.')
     base_data_str = parts.__getitem__(1)
     base_time_str = parts.__getitem__(2)
+
     base_time_parts = base_time_str.split('-')
     base_time_h = int(base_time_parts.__getitem__(0))
     if base_time_parts.__getitem__(2) == "PM":
         base_time_h += 12
     base_time_m = int(base_time_parts.__getitem__(1))
+
     base_data_time_str = base_data_str + " " + str(base_time_h) + ":" + str(base_time_m)
     base_data_time = time.strptime(base_data_time_str, "%m-%d-%Y %H:%S")
     base_time_stramp = time.mktime( base_data_time )
+
     return int(base_time_stramp)
 
 #write dict to file
@@ -52,18 +58,20 @@ for f in files:
         min_base_time = base_time
 print("Min Time = " + str(min_base_time) )
 
-min_timestramp_s = 0
-max_timestramp_s = 0
+min_timestramp_s = 0 # minimun timestramp in second
+max_timestramp_s = 0 # maxinum timestramp in second
 total_read = 0
 total_write = 0
 size_read = 0
 size_write = 0
-#count_s_2_read = dict()
-#count_s_2_write = dict()
-#count_byte_2_io = dict()
+count_s_2_read = dict()
+count_s_2_write = dict()
+count_byte_2_io = dict()
+count_file_2_io = dict()
 map_disknum_2_s_2_io = dict()# each disknum to one dict, which is timestramp in second to io
-#list_ns_of_io = []
 map_ns_to_offset_in_sector = dict()
+map_ns_to_offset_in_sector_of_read = dict()
+map_ns_to_offset_in_sector_of_write = dict()
 def update_map_disknum_2_s_2_io(target, disknum,timestramp_s):
     if disknum in target:
         s_2_io = target[disknum]
@@ -74,6 +82,7 @@ def update_map_disknum_2_s_2_io(target, disknum,timestramp_s):
     else:
         target.setdefault(disknum, {timestramp_s:1})
 
+# scanning trace files and accumulate data
 for f in files:
     print("Processing : " + f)
     file = open(default_traces_dir + r"\\" + f, "r")
@@ -91,7 +100,7 @@ for f in files:
 
             op_timestramp_rel_ns = words.__getitem__(1)  # relatived timestramp in ns
             op_timestramp_ab_ns = int(op_timestramp_rel_ns) + base_timestramp_in_ns # absolute timestramp in ns
-            #list_ns_of_io.append(op_timestramp_ab_ns)   # update timestramp ns list # assume no requests has same timestramp in ns
+
             op_timestramp_ab_s = int(op_timestramp_ab_ns / 1000 / 1000) # absolute timestramp in s
             if min_timestramp_s == 0:
                 min_timestramp_s = op_timestramp_ab_s
@@ -104,42 +113,56 @@ for f in files:
                 if op_timestramp_ab_s > max_timestramp_s:
                     max_timestramp_s = op_timestramp_ab_s
 
-            op_size = words.__getitem__(6)  # io size in byte 16
+            op_size = words.__getitem__(6)# io size in byte 16
             op_size = int(op_size, 16)
-            #if op_size in count_byte_2_io:
+            #if op_size in count_byte_2_io:  # accumulate number of requests according to its IO size
             #    count_byte_2_io[op_size] += 1
             #else:
             #    count_byte_2_io.setdefault(op_size, 1)
 
-            op_disk_num = words.__getitem__(8) # disk number
+            op_disk_num = words.__getitem__(8)# disk number
             op_disk_num = int(op_disk_num)
-            update_map_disknum_2_s_2_io(map_disknum_2_s_2_io, op_disk_num, op_timestramp_ab_s) # update disknum
+            #update_map_disknum_2_s_2_io(map_disknum_2_s_2_io, op_disk_num, op_timestramp_ab_s) # update disknum
 
             op_offset_byte = words.__getitem__(5) # data offset in byte 16
             op_offset_byte = int(op_offset_byte, 16)
             op_offset_sector = int(op_offset_byte / 512) # data offset in sector
             #map_ns_to_offset_in_sector.update( { op_timestramp_ab_ns: op_offset_sector } ) # timestramp of request to its data offset in sector
 
+            op_filename = words.__getitem__(14)
+
             if op_type == "diskread":
                 total_read += 1
                 size_read += op_size
-                #if op_timestramp_ab_s in count_s_2_read:
+                #if op_timestramp_ab_s in count_s_2_read: # accumulate number of reads per second
                 #    count_s_2_read[op_timestramp_ab_s] += 1
                 #else:
                 #    count_s_2_read.setdefault(op_timestramp_ab_s, 1)
+                #map_ns_to_offset_in_sector_of_read.update( { op_timestramp_ab_ns: op_offset_sector } )
+                if op_filename in count_file_2_io:
+                    count_file_2_io[op_filename]["read"] += 1
+                else:
+                    count_file_2_io.setdefault(op_filename, {"read":1,"write":0})
             else:
                 if op_type == "diskwrite":
                     total_write += 1
                     size_write += op_size
-                    #if op_timestramp_ab_s in count_s_2_write:
+                    #if op_timestramp_ab_s in count_s_2_write: # accumulate number of writes per second
                     #    count_s_2_write[op_timestramp_ab_s] += 1
                     #else:
                     #    count_s_2_write.setdefault(op_timestramp_ab_s, 1)
+                    #    map_ns_to_offset_in_sector_of_write.update({op_timestramp_ab_ns: op_offset_sector})
+                    if op_filename in count_file_2_io:
+                        count_file_2_io[op_filename]["write"] += 1
+                    else:
+                        count_file_2_io.setdefault(op_filename, {"read": 0, "write": 1})
         if line == "endheader":
             processing = True
     file.close()
     print("TotalRead  = " + str(total_read))
     print("TotalWrite = " + str(total_write))
+
+print("--------------------------------------------------------")
 print("TotalRead  = " + str(total_read))
 print("TotalWrite = " + str(total_write))
 print("SizeRead = " + str(size_read) )
@@ -154,57 +177,104 @@ print("AvgReqSize = " + str( int((size_write + size_read)/(durning_time)) ) )
 
 # count timestramp in second to io
 # which means to merged s_2_read & s_2_write
-#count_s_2_io = count_s_2_read.copy()
-#for w in count_s_2_write:
-#    if w in count_s_2_io:
-#        count_s_2_io[w] += count_s_2_write[w]
-#    else:
-#        count_s_2_io.setdefault(w, count_s_2_write[w])
-
-# calculate interarrival time of whole requests
-# and its data offset of sector
+print("Merge time(second) to read and write to IO......")
 '''
+count_s_2_io = count_s_2_read.copy()
+for w in count_s_2_write:
+    if w in count_s_2_io:
+        count_s_2_io[w] += count_s_2_write[w]
+    else:
+        count_s_2_io.setdefault(w, count_s_2_write[w])
+'''
+# calculate interarrival time of whole requests
+# and its data offset in sector
+# NOTE: the timestramps of request need to be sorted
+'''
+def count_inter_value_of_dict_sorted_by_key(source, target):
+    first = True
+    last_key = 0
+    this_key = 0
+    for key in sorted( source.keys() ):
+        if first:
+            last_key = key
+            first = False
+        else:
+            this_key = key
+            #inter_key = this_key - last_key
+            inter_value = source[this_key] - source[last_key]
+            if inter_value in target:
+                target[inter_value] += 1
+            else:
+                target.setdefault(inter_value, 1)
+            this_key = last_key
+print("Calculating requests' inter time(ns) & offset(IO/Read/Write)......")
 keys = map_ns_to_offset_in_sector.keys()
 first = True
 ns_L = 0
 ns_H = 0
 count_inter_ns_2_io = dict()
 count_inter_offset_sector_2_io = dict()
-for ns in sorted(keys): # sorted timestramp in ns of request
+for ns in sorted(keys): # sorted timestramp in ns
     if first:
         ns_L = ns
         first = False
     else:
         ns_H = ns
-        interarrival_time_ns = ns_H - ns_L
-        interarrival_offset_sector = map_ns_to_offset_in_sector[ns_H] - map_ns_to_offset_in_sector[ns_L]
-        if interarrival_time_ns in count_inter_ns_2_io:
-            count_inter_ns_2_io[ interarrival_time_ns ] += 1
+        inter_time_ns = ns_H - ns_L
+        inter_offset_sector = map_ns_to_offset_in_sector[ns_H] - map_ns_to_offset_in_sector[ns_L]
+        if inter_time_ns in count_inter_ns_2_io:
+            count_inter_ns_2_io[ inter_time_ns ] += 1
         else:
-            count_inter_ns_2_io.setdefault( interarrival_time_ns, 1 )
-        if interarrival_offset_sector in count_inter_offset_sector_2_io:
-            count_inter_offset_sector_2_io[ interarrival_offset_sector ] += 1
+            count_inter_ns_2_io.setdefault( inter_time_ns, 1 )
+        if inter_offset_sector in count_inter_offset_sector_2_io:
+            count_inter_offset_sector_2_io[ inter_offset_sector ] += 1
         else:
-            count_inter_offset_sector_2_io.setdefault( interarrival_offset_sector, 1 )
+            count_inter_offset_sector_2_io.setdefault( inter_offset_sector, 1 )
         ns_L = ns_H
+
+count_inter_offset_sector_2_read = dict()
+count_inter_value_of_dict_sorted_by_key(map_ns_to_offset_in_sector_of_read, count_inter_offset_sector_2_read)
+count_inter_offset_sector_2_write = dict()
+count_inter_value_of_dict_sorted_by_key(map_ns_to_offset_in_sector_of_write, count_inter_offset_sector_2_write)
 '''
 # construct output path of result
+print("Constructing Output File Path......")
 result_s_2_read = default_result_dir + r"\\" + "s_2_read.csv"
 result_s_2_write = default_result_dir + r"\\" + "s_2_write.csv"
 result_s_2_io = default_result_dir + r"\\" + "s_2_io.csv"
 result_byte_2_io = default_result_dir + r"\\" + "byte_2_io.csv"
+result_file_2_io = default_result_dir + r"\\" + "file_2_io.csv"
 result_inter_offset_sector_2_io = default_result_dir + r"\\" + "inter_offset_sector_2_io.csv"
+result_inter_offset_sector_2_read = default_result_dir + r"\\" + "inter_offset_sector_2_read.csv"
+result_inter_offset_sector_2_write = default_result_dir + r"\\" + "inter_offset_sector_2_write.csv"
 result_inter_ns_2_io = default_result_dir + r"\\" + "inter_ns_2_io.csv"
 
 # write data to file
+print("Writting data to file......")
+#print("Writting " + result_s_2_read)
 #write_dict_to_csv(result_s_2_read, count_s_2_read)
+#print("Writting " + result_s_2_write)
 #write_dict_to_csv(result_s_2_write, count_s_2_write)
+#print("Writting " + result_s_2_io)
 #write_dict_to_csv(result_s_2_io, count_s_2_io)
+#print("Writting " + result_byte_2_io)
 #write_dict_to_csv(result_byte_2_io, count_byte_2_io)
+print("Writting " + result_file_2_io)
+#write_dict_to_csv(result_file_2_io, count_file_2_io)
+file = open(result_file_2_io, "wb")
+for d in count_file_2_io:
+    file.write((str(d) + "," + str(count_file_2_io[d]["read"]) + "," + str(count_file_2_io[d]["write"]) + "\r\n").encode(encoding="utf-8"))
+file.close()
+#print("Writting " + result_inter_offset_sector_2_io)
 #write_dict_to_csv(result_inter_offset_sector_2_io, count_inter_offset_sector_2_io)
+#print("Writting " + result_inter_offset_sector_2_read)
+#write_dict_to_csv(result_inter_offset_sector_2_read, count_inter_offset_sector_2_read)
+#print("Writting " + result_inter_offset_sector_2_write)
+#write_dict_to_csv(result_inter_offset_sector_2_write, count_inter_offset_sector_2_write)
+#print("Writting " + result_inter_ns_2_io)
 #write_dict_to_csv(result_inter_ns_2_io, count_inter_ns_2_io)
-
-for disknum in map_disknum_2_s_2_io:
-    result_s_2_io_unber_disknum = default_result_dir + r"\\" + "disk_" + str(disknum) + "_s_2_io.csv"
-    s_2_io = map_disknum_2_s_2_io[disknum]
-    write_dict_to_csv(result_s_2_io_unber_disknum, s_2_io)
+#for disknum in map_disknum_2_s_2_io:
+#    result_s_2_io_unber_disknum = default_result_dir + r"\\" + "disk_" + str(disknum) + "_s_2_io.csv"
+#    s_2_io = map_disknum_2_s_2_io[disknum]
+#    print("Writting " + result_s_2_io_unber_disknum)
+#    write_dict_to_csv(result_s_2_io_unber_disknum, s_2_io)
