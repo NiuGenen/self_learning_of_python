@@ -4,6 +4,19 @@ import matplotlib.mlab as mlab
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
 
+'''
+usage:
+each multiline comment draw one kind of chart
+Note: "spread of IO size" only has output
+Charts
+1. number of reads and writes per second
+2. number of requests per second or per hour
+3. number of requests per secong of each disk
+4. number of two adjoning requests which has same difference of its timestramp
+5. number of two adjoning requests which has same difference of its offset 
+6. top 35 files accodring to its number of requests
+'''
+
 trace_name = "DevelopmentToolsRelease"
 trace_absolute_dir = "E:\\"
 
