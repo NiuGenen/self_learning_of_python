@@ -37,7 +37,7 @@ def get_base_time_stramp_in_s_from_file_name(name):
     base_time_m = int(base_time_parts.__getitem__(1))
 
     base_data_time_str = base_data_str + " " + str(base_time_h) + ":" + str(base_time_m)
-    base_data_time = time.strptime(base_data_time_str, "%m-%d-%Y %H:%S")
+    base_data_time = time.strptime(base_data_time_str, "%m-%d-%Y %H:%M")
     base_time_stramp = time.mktime( base_data_time )
 
     return int(base_time_stramp)

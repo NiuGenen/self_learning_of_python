@@ -18,7 +18,7 @@ Charts
 '''
 
 trace_name = "DevelopmentToolsRelease"
-trace_absolute_dir = "E:\\"
+trace_absolute_dir = "E:\PERSONAL\课程\大三下\大数据处理__毛波\实验\最后的大实验\\"
 
 default_source_dir = trace_absolute_dir + trace_name
 default_traces_dir = default_source_dir + "\Traces"
@@ -118,8 +118,9 @@ plt.legend(loc='upper right')
 plt.show()
 '''
 
+MIN_TIME = 1204736457
+
 #number of requests
-'''
 s_2_io = open(result_s_2_io, "r")
 s = []
 io = []
@@ -127,15 +128,13 @@ total_io = 0
 for line in s_2_io:
     #print(line)
     words = line.strip().split(",")
-    ts = int(words.__getitem__(0)) - 1204736457 + 1
+    ts = int(words.__getitem__(0)) - MIN_TIME + 1
     c = int(words.__getitem__(1))
     s.append(ts)
     io.append(c)
     total_io += c
 s_2_io.close()
-'''
 #per second
-"""
 fig_s_2_io = plt.figure()
 ax = fig_s_2_io.add_subplot(1,1,1)
 ax.set_ylabel('Total Requests (I/Os)')
@@ -145,9 +144,7 @@ plt.xlim(0,64800)
 plt.ylim(0,3000)
 ax.bar(s, io, alpha = .5, color = 'k')
 plt.show()
-"""
 #per hour
-'''
 h_2_io = dict()
 index = 0
 while index < s.__len__():
@@ -170,7 +167,7 @@ ax.set_xlabel('DevelopmentToolsRelease')
 ax.set_title('Number of requests per hour')
 ax.bar(h, io, alpha = .5, color = 'k')
 plt.show()
-'''
+
 
 # 3D disknum to time in second to io
 # 16 disk for all from 0 to 16 ( no 15 )
@@ -207,12 +204,12 @@ plt.show()
 '''
 
 # interarrival timestramp in ns to io
-'''
-result_inter_ns_2_io = default_result_dir + "\\" + "inter_ns_2_io.csv"
+
+result_inter_ns_2_io = default_result_dir + "\inter_ns_2_io.csv"
 print( result_inter_ns_2_io )
 f = open(result_inter_ns_2_io, "r")
-ns = []
-io_ns = []
+#ns = []
+#io_ns = []
 fig = plt.figure()
 ax = fig.add_subplot(1,1,1)
 s_2_io = dict()
@@ -222,7 +219,7 @@ for line in f:
     _ns = int( words.__getitem__(0) )
     _io = int( words.__getitem__(1) )
     total_io += _io
-    s = _ns/60/60
+    s = _ns/1000/1000
     if s in s_2_io:
         s_2_io[s] += _io
     else:
@@ -234,7 +231,7 @@ for line in f:
 s = []
 io_s = []
 for _s in s_2_io:
-    if _s < 4:
+    if _s < 0.1:
         s.append( _s )
         io_s.append( s_2_io[_s] )
 ax.scatter(s, io_s, color="b", alpha=.5)
@@ -256,7 +253,7 @@ ax2.set_ylabel("Percent")
 
 f.close()
 plt.show()
-'''
+
 
 # inter offset of sector to io(read/write)
 '''
@@ -364,6 +361,7 @@ plt.show()
 
 # file rank by number of reads or requests
 # top 10 files
+'''
 result_file_2_io = default_result_dir + "\\" + "file_2_io.csv"
 map_file_2_id = dict()
 id = 1
@@ -434,3 +432,4 @@ ax2.yaxis.set_major_formatter(y2ticks)
 ax2.set_ylabel("Percent of requests")
 
 plt.show()
+'''
